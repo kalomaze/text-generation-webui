@@ -279,6 +279,28 @@ class RepetitionPenaltyLogitsProcessorWithRange(LogitsProcessor):
 
         return scores
 
+class QuadraticSamplingLogitsProcessor(LogitsProcessor):
+    '''
+    Applies a quadratic transformation to the logits based on the provided smoothing factor.
+    The transformation is centered around the maximum logit value.
+    '''
+
+    def __init__(self, smoothing_factor: float):
+        self.smoothing_factor = smoothing_factor
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+        # Compute the maximum logit value
+        max_logit = scores.max()
+
+        # Apply the quadratic transformation
+        transformed_logits = -(self.smoothing_factor * (scores - max_logit)**2) + max_logit
+
+        # No need to print the top 5 logits since this is not required
+        # print("Original top 5 logits: ", torch.topk(scores, 5))
+        # print("New top 5 logits: ", torch.topk(transformed_logits, 5))
+
+        return transformed_logits
+
 
 def get_logits_warper_patch(self, generation_config):
     # Make sure that temperature is float and not int
@@ -350,12 +372,16 @@ def get_logits_processor_patch(self, **kwargs):
     presence_penalty = kwargs['generation_config'].presence_penalty
     frequency_penalty = kwargs['generation_config'].frequency_penalty
     repetition_penalty_range = kwargs['generation_config'].repetition_penalty_range
+    smoothing_factor = kwargs['generation_config'].smoothing_factor
     do_rep_pen_hijack = (repetition_penalty > 1) or (presence_penalty != 0) or (frequency_penalty != 0)
     if do_rep_pen_hijack:
-        # Make sure that a RepetitionPenaltyLogitsProcessor will be created
-        kwargs['generation_config'].repetition_penalty = 1.1  # must set to some value > 1
+        kwargs['generation_config'].repetition_penalty = 1.1  # Set to value > 1 to ensure RepetitionPenaltyLogitsProcessor is created
 
     result = self._get_logits_processor_old(**kwargs)
+
+    # Add QuadraticSamplingLogitsProcessor only when smoothing_factor > 0
+    if smoothing_factor > 0:
+        result.append(QuadraticSamplingLogitsProcessor(smoothing_factor))
 
     if do_rep_pen_hijack:
         for i in range(len(result)):
@@ -374,6 +400,7 @@ def generation_config_init_patch(self, **kwargs):
     self.dynatemp_exponent = kwargs.pop("dynatemp_exponent", 1)
     self.tfs = kwargs.pop("tfs", 1.0)
     self.top_a = kwargs.pop("top_a", 0.0)
+    self.smoothing_factor = kwargs.pop("smoothing_factor", 0.0)
     self.mirostat_mode = kwargs.pop("mirostat_mode", 0)
     self.mirostat_eta = kwargs.pop("mirostat_eta", 0.1)
     self.mirostat_tau = kwargs.pop("mirostat_tau", 5)
