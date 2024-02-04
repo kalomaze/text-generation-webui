@@ -124,6 +124,7 @@ def list_interface_input_elements():
         'top_k',
         'typical_p',
         'smoothing_factor',
+        'smoothing_last',
         'epsilon_cutoff',
         'eta_cutoff',
         'repetition_penalty',

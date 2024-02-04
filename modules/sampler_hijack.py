@@ -334,16 +334,26 @@ def get_logits_warper_patch(self, generation_config):
             if not isinstance(warper, TemperatureLogitsWarper):
                 warpers.remove(warper)
     else:
-        if generation_config.tfs is not None and 0.0 <= generation_config.tfs < 1.0:
-            warpers_to_add.append(TailFreeLogitsWarper(tfs=generation_config.tfs, min_tokens_to_keep=min_tokens_to_keep))
-        if generation_config.top_a is not None and 0.0 < generation_config.top_a <= 1.0:
-            warpers_to_add.append(TopALogitsWarper(top_a=generation_config.top_a, min_tokens_to_keep=min_tokens_to_keep))
-        if generation_config.min_p is not None and 0.0 < generation_config.min_p <= 1.0:
-            warpers_to_add.append(MinPLogitsWarper(min_p=generation_config.min_p, min_tokens_to_keep=min_tokens_to_keep))
-            
-        # Add QuadraticSamplingLogitsWarper only when smoothing_factor > 0
-        if generation_config.smoothing_factor > 0:
-            warpers_to_add.append(QuadraticSamplingLogitsWarper(smoothing_factor=generation_config.smoothing_factor))
+        if generation_config.smoothing_last:
+            if generation_config.tfs is not None and 0.0 <= generation_config.tfs < 1.0:
+                warpers_to_add.append(TailFreeLogitsWarper(tfs=generation_config.tfs, min_tokens_to_keep=min_tokens_to_keep))
+            if generation_config.top_a is not None and 0.0 < generation_config.top_a <= 1.0:
+                warpers_to_add.append(TopALogitsWarper(top_a=generation_config.top_a, min_tokens_to_keep=min_tokens_to_keep))
+            if generation_config.min_p is not None and 0.0 < generation_config.min_p <= 1.0:
+                warpers_to_add.append(MinPLogitsWarper(min_p=generation_config.min_p, min_tokens_to_keep=min_tokens_to_keep))
+            # Add QuadraticSamplingLogitsWarper after MinPLogitsWarper if smoothing_factor > 0
+            if generation_config.smoothing_factor > 0:
+                warpers_to_add.append(QuadraticSamplingLogitsWarper(smoothing_factor=generation_config.smoothing_factor))
+        else:
+            # Add QuadraticSamplingLogitsWarper before MinPLogitsWarper if smoothing_factor > 0
+            if generation_config.smoothing_factor > 0:
+                warpers_to_add.append(QuadraticSamplingLogitsWarper(smoothing_factor=generation_config.smoothing_factor))
+            if generation_config.tfs is not None and 0.0 <= generation_config.tfs < 1.0:
+                warpers_to_add.append(TailFreeLogitsWarper(tfs=generation_config.tfs, min_tokens_to_keep=min_tokens_to_keep))
+            if generation_config.top_a is not None and 0.0 < generation_config.top_a <= 1.0:
+                warpers_to_add.append(TopALogitsWarper(top_a=generation_config.top_a, min_tokens_to_keep=min_tokens_to_keep))
+            if generation_config.min_p is not None and 0.0 < generation_config.min_p <= 1.0:
+                warpers_to_add.append(MinPLogitsWarper(min_p=generation_config.min_p, min_tokens_to_keep=min_tokens_to_keep))
             
     if len(warpers) > 0 and isinstance(warpers[-1], LogitNormalization):
         normalize = warpers.pop(-1)
@@ -401,6 +411,7 @@ def generation_config_init_patch(self, **kwargs):
     self.tfs = kwargs.pop("tfs", 1.0)
     self.top_a = kwargs.pop("top_a", 0.0)
     self.smoothing_factor = kwargs.pop("smoothing_factor", 0.0)
+    self.smoothing_last = kwargs.pop("smoothing_last", True)
     self.mirostat_mode = kwargs.pop("mirostat_mode", 0)
     self.mirostat_eta = kwargs.pop("mirostat_eta", 0.1)
     self.mirostat_tau = kwargs.pop("mirostat_tau", 5)

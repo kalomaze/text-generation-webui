@@ -28,6 +28,7 @@ class GenerationOptions(BaseModel):
     mirostat_tau: float = 5
     mirostat_eta: float = 0.1
     temperature_last: bool = False
+    smoothing_last: bool = True
     do_sample: bool = True
     seed: int = -1
     encoder_repetition_penalty: float = 1
