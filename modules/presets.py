@@ -26,7 +26,7 @@ def default_preset():
         'repetition_penalty_range': 1024,
         'typical_p': 1,
         'smoothing_factor': 0,
-        'smoothing_last': False,
+        'smoothing_last': True,
         'tfs': 1,
         'top_a': 0,
         'epsilon_cutoff': 0,
